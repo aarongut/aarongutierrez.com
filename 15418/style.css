@@ -1,0 +1,104 @@
+body {
+	font-family: sans-serif;
+	background-color: #484848;
+	color: #989898;
+	padding: 24pt;
+	max-width: 800px;
+	margin-left: auto;
+	margin-right: auto;
+	margin-top: 0;
+	margin-bottom: 0;
+}
+
+h1, h2, h3, h4, h5, h6 {
+	font-weight: lighter;
+	line-height: 150%;
+}
+
+h1 {
+	font-size: 24pt;
+}
+
+h2 {
+	font-size: 16pt;
+	color: #ae4c00;
+}
+
+h3 {
+	font-size: 12pt;
+	font-weight: bold;
+	color: #259089;
+}
+
+h4 {
+	font-size: 12pt;
+	font-weight: bold;
+}
+
+h4 {
+	line-height: 100%;
+}
+
+p, ul {
+	font-size: 10pt;
+	line-height: 12pt;
+	color: #b8b8b8;
+}
+
+p.caption {
+	margin-top: 2pt;
+	margin-bottom: 12pt;
+	margin-left: 12pt;
+	margin-right: 12pt;
+	text-align: center;
+}
+
+a {
+	color: #7878c8;
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+body > * {
+	border-bottom: 1px solid #989898;
+}
+
+code {
+	background: #b8b8b8;
+	width: auto;
+	display: block;
+	padding: 10pt;
+	color: #222;
+	font-family: monospace;
+	overflow-x: scroll;
+}
+
+code > pre {
+	margin: 0;
+	line-height: 125%;
+}
+
+code .keyword {
+	color: #204a87;
+	font-weight: bold;
+}
+
+code .ident {
+	font-weight: bold;
+}
+
+code .op {
+	color: #208787;
+}
+
+code .comment {
+	color: #20874a;
+}
+
+code .type {
+	color: #ae4c00;
+	font-weight: bold;
+}

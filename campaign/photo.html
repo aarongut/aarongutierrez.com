@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Profile Picture Creator - Vaasavi and Aaron 2016</title>
+    <script src="https://use.typekit.net/bdx7ivv.js"></script>
+    <script>try{Typekit.load({ async: true });}catch(e){}</script>
+
+    <link rel="stylesheet" href="site.css" >
+    <link rel="icon" type="image/png" href="favicon.png" >
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+  </head>
+  <body>
+<script>
+  window.fbAsyncInit = function() {
+    FB.init({
+      appId      : '1522083631429252',
+      xfbml      : true,
+      version    : 'v2.5'
+    });
+
+    checkLoginState();
+  };
+
+  (function(d, s, id){
+     var js, fjs = d.getElementsByTagName(s)[0];
+     if (d.getElementById(id)) {return;}
+     js = d.createElement(s); js.id = id;
+     js.src = "http://connect.facebook.net/en_US/sdk.js";
+     fjs.parentNode.insertBefore(js, fjs);
+   }(document, 'script', 'facebook-jssdk'));
+
+function statusChangeCallback(response) {
+  if (response.status === 'connected') {
+    testAPI();
+  }
+}
+
+function checkLoginState() {
+  FB.getLoginStatus(function(response) {
+    statusChangeCallback(response);
+  });
+}
+
+
+function testAPI() {
+  FB.api('/me/picture', {width: '800'}, function(response) {
+    if (response && !response.error) {
+      var image = document.getElementById("basePic");
+      image.src = response.data.url;
+      image.onload = function() {
+        makeImage();
+      }
+    }
+
+  });
+}
+
+function makeImage() {
+  document.getElementById('profPic').alt=
+    "You need an HTML5 compatible browser to use this feature";
+
+  var canvas = document.getElementById('profPicCanvas');
+  var context = canvas.getContext("2d");
+
+  var image = document.getElementById("basePic");
+  canvas.height = 800 * image.height / image.width;
+
+  // img, x, y, width, height
+  context.drawImage(document.getElementById("basePic"), 0, 0, 800, canvas.height);
+  context.drawImage(document.getElementById("logoPic"), 0, canvas.height - 242, 800, 242);
+
+  document.getElementById('profPic').src = canvas.toDataURL();
+}
+
+window.onload = function() {
+  makeImage();
+
+  document.getElementById('uploadImg').onchange = function(e) {
+    var reader = new FileReader();
+
+    reader.onload = function(e) {
+      document.getElementById('basePic').src = e.target.result;
+      makeImage();
+    }
+
+    reader.readAsDataURL(e.target.files[0]);
+  };
+};
+</script>
+
+    <div class="header">
+      <div class="mobile">
+      <img src="logo.png">
+      </div>
+    </div>
+    <div class="main">
+    <nav class="desktop">
+      <img src="logo.png">
+      <ul class="clearfix">
+        <li><a href="index.html#contact">Contact</a></li>
+        <li><a href="#">Picture Creator</a></li>
+        <li><a href="index.html#team">Team</a></li>
+        <li><a href="index.html#platform">Platform</a></li>
+        <li><a href="index.html#about">About</a></li>
+      </ul>
+    </nav>
+
+    <h2>Profile Picture Creator</h2>
+    Login with Facebook to create your picture
+
+    <fb:login-button scope="public_profile" onlogin="checkLoginState();">
+    </fb:login-button>
+    
+    or upload another image
+    <input type="file" name="image" accept="image/*" id="uploadImg">
+
+    <canvas id="profPicCanvas" width="800" height="800" class="hidden"></canvas>
+    <img class="profPic" id="profPic">
+
+    <img id="basePic" src="cover.jpg" crossOrigin="Anonymous" class="hidden">
+    <img id="logoPic" src="frame.png" class="hidden">
+    <div class="footer">
+      Vaasavi and Aaron 2016<br />
+      <a href="http://www.vaasandaaron.com">vaasandaaron.com</a><br />
+      <a href="http://www.vaasavi.com">vaasavi.com</a><br />
+      <a href="http://www.aarongutierrez.com">aarongutierrez.com</a>
+    </div>
+    <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+          })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-62761470-4', 'auto');
+    ga('send', 'pageview');
+    </script>
+  </body>
+</html>

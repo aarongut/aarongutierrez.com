@@ -1,0 +1,366 @@
+<html>
+<head>
+  <title>ISPC++ - 15418 Final Project</title>
+  <link rel="stylesheet" href="style.css" type="text/css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+  <header>
+    <h1>ISPC++</h1>
+    <h2> 15418 Final Project</h2>
+    <p>Aaron Gutierrez <br> amgutier@andrew <br> Carnegie Mellon University</p>
+  </header>
+
+  <section>
+    <h2>Final Write Up</h2>
+
+    <h3>Summary</h3>
+    <p>ISPC++ adds support for numeric polymorphic functions to the Intel SPMD
+    Program Compiler. Programmers can write a single function definition and use
+    the same function on any appropriate numeric type.</p>
+
+    <h3>Background</h3>
+    <p>ISPC++ is a <a href="https://github.com/aarongut/ispc">fork</a> of the
+    <a href="https://ispc.github.io/ispc.html"> Intel SPMD Program Compiler
+      (ISPC)</a>. ISPC aims to make writing programs that take advantage
+    of SIMD vector instructions easy for a C or C++ programmer. Because of the
+    target application, most functions perform computations on numeric data.
+    Based off of the C language, an ISPC program must include multiple
+    different definitions for each appropriate datatype.</p>
+
+    <p>ISPC++ removes that burden by providing polymorphic numeric types and
+    automatically compiling multiple versions of functions for use with
+    different datatypes. The programmer now needs to only write and maintain a
+    single version of each function. </p>
+
+    <code><pre>
+<span class="type">number</span> <span class="ident">pow</span>(<span class="type">number</span> <span class="ident">b</span>, <span class="type">int</span> <span class="ident">a</span>) {
+    <span class="type">number</span> <span class="ident">out</span> <span class="op">=</span> <span class="ident">b</span>;
+    <span class="keyword">for</span> (<span class="type">int</span> <span class="ident">i</span> <span class="op">=</span> 1; <span class="ident">i</span><span class="op">&lt;</span><span class="ident">a</span>; <span class="ident">i</span><span class="op">++</span>) {
+        <span class="ident">out</span> <span class="op">*=</span> <span class="ident">b</span>;
+    }
+
+    <span class="keyword">return</span> <span class="ident">out</span>;
+}
+
+<span class="keyword">export</span> <span class="type">void</span> <span
+class="ident">square</span>(<span class="type">uniform int</span> <span
+class="ident">N</span>, <span class="type">uniform number</span> <span
+class="ident">b</span>[], <span class="type">uniform number</span> <span class="ident">out</span>[]) {
+    <span class="keyword">foreach</span> (<span class="ident">i</span> <span class="op">=</span> 0 <span class="op">...</span> <span class="ident">N</span>) {
+        <span class="ident">out</span>[<span class="ident">i</span>] <span class="op">=</span> <span class="ident">pow</span>(<span class="ident">b</span>[<span class="ident">i</span>], 2);
+    }
+}</pre>
+    </code>
+    <p class="caption">Sample function using a polymorphic helper method</p>
+
+
+    <h3>Approach</h3>
+    <p>Modifications to ISPC fall into two broad categories: adding support for
+    polymorphic type, and expanding functions with polymorphic arguments.<p>
+
+    <p>To add support for polymorphic types, I created a new type class
+    <kbd>PolyType</kbd>. There are three varieties: integer, floating, and
+    number. As with the other basic types in ISPC, we can have uniform or
+    varying, in addition to const, versions of each type. With the new types
+    added, the parser was modified to produce the new types. Finally, the new
+    cases produced by the new types are handled in typechecking.</p>
+
+    <p>After typechecking a function, we check for polymorphic parameters. If a
+    function has any polymorphic parameters, we create all of the permutations
+    of the function prototype. These prototypes are stored to produce the proper
+    header file later.</p>
+
+    <p>When adding definitions to the declarations, we traverse the abstract
+    syntax tree replacing the polymorphic types with the appropriate type from
+    the function definition. After this step is done, we are left with
+    overloaded functions and no polymorphic types. The rest of compilation
+    occurs normally.</p>
+
+    <p>When writing the final output, we add wrappers around all of the
+    polymorphic functions to enable convenient use from our C++ program.</p>
+
+    <p>For example, if we have a function <kbd>void foo(uniform int N, uniform
+      floating A[])</kbd>, we'd have the following header file:</p>
+
+    <code>
+      <pre><span class="comment">/* boilerplate from ISPC */</span>
+    <span class="keyword">extern</span> <span class="type">void</span> <span class="ident">foo_uni_un_3C_und_3E_</span>(<span class="type">int32_t</span> <span class="ident">N</span>, <span class="type">double</span> * <span class="ident">X</span>);
+    <span class="keyword">extern</span> <span class="type">void</span> <span class="ident">foo_uni_un_3C_unf_3E_</span>(<span class="type">int32_t</span> <span class="ident">N</span>, <span class="type">float</span> * <span class="ident">X</span>);
+
+#if defined(__cplusplus)
+    <span class="keyword">extern</span> <span class="type">void</span> <span class="ident">foo</span>(<span class="type">int32_t</span> <span class="ident">N</span>, <span class="type">double</span> * <span class="ident">X</span>) {
+        <span class="keyword">return</span> <span class="ident">foo_uni_un_3C_und_3E_</span>(<span class="ident">N</span>, <span class="ident">X</span>);
+    }
+    <span class="keyword">extern</span> <span class="type">void</span> <span class="ident">foo</span>(<span class="type">int32_t</span> <span class="ident">N</span>, <span class="type">float</span> * <span class="ident">X</span>) {
+        <span class="keyword">return</span> <span class="ident">foo_uni_un_3C_unf_3E_</span>(<span class="ident">N</span>, <span class="ident">X</span>);
+    }
+#endif <span class="comment">// __cplusplus</span>
+<span class="comment">/* more boilerplate */</span>
+</pre></code>
+    <p class="caption">Example header file showing overloaded polymorphic
+    function <kbd>foo</kbd></p>
+
+    <h3>Language Specification</h3>
+    <p>Most of the language is unchanged from ISPC. The specification can be
+    found in the ISPC <a
+      href="https://ispc.github.io/ispc.html#the-ispc-language">documentation</a>.</p>
+
+    <p>The only change is the 3 new types. The semantics follow if you treat the
+    types as their representative atomic types.</p>
+    <code>
+<pre>&lt;type&gt;        := &lt;variability&gt; &lt;typename&gt&lt;quant&gt;;
+               | <span class="comment">/* all the other ISPC types</span>
+               ;
+&lt;variability&gt; := <span class="ident">uniform</span>
+               | <span class="ident">varying</span>
+               | <span class="comment">/* empty, varying */</span>
+               ;
+&lt;typename&gt;    := <span class="ident">integer</span>
+               | <span class="ident">floating</span>
+               | <span class="ident">number</span>
+               ;
+&lt;quant&gt;       := <span class="ident">$</span>[0-9]+
+               | <span class="comment">/* empty, default quantifier */</span>
+               ;</pre>
+    </code>
+    <p class="caption">Specification for an ISPC++ type</p>
+
+    <p><kbd>integer</kbd> is expanded to all of the integer types (signed and
+    unsigned, 8, 16, 32, and 64 bits). <kbd>floating</kbd> is expanded to both
+    <kbd>float</kbd> and <kbd>double</kbd>. <kbd>number</kbd> is expanded to the
+    union of the set of types for <kbd>integer</kbd> and
+    <kbd>floating</kbd>.</p>
+
+    <p>The quantifier is used to distinguish independent polymorphic types. If
+    no quantifier is specified, all similar types are considered identical.
+    Otherwise, types with different quantifiers are expanded independently. The
+    syntax for quantifiers has changed since the start of my project to avoid
+    conflict with vector types.</p>
+
+    <p>In the saxpy function bellow, we use type quantifiers to specify that the
+    input types can vary independent of the output type.</p>
+
+    <code>
+      <pre><span class="keyword">export</span> <span class="type">void</span> <span class="ident">saxpy</span>(<span class="keyword">uniform</span> <span class="keyword">int</span> <span class="ident">N</span>,
+                  <span class="keyword">uniform</span> <span class="type">floating$0</span> <span class="ident">scale</span>,
+                  <span class="keyword">uniform</span> <span class="type">floating$1</span> <span class="ident">X</span>[],
+                  <span class="keyword">uniform</span> <span class="type">floating$1</span> <span class="ident">Y</span>[],
+                  <span class="keyword">uniform</span> <span class="type">floating$2</span> <span class="ident">result</span>[])
+{
+    <span class="keyword">foreach</span> (<span class="ident">i</span> <span class="op">=</span> 0 <span class="op">...</span> <span class="ident">N</span>) {
+        <span class="type">floating$2</span> <span class="ident">tmp</span> <span class="op">=</span> <span class="ident">scale</span> <span class="op">*</span> <span class="ident">X</span>[<span class="ident">i</span>] <span class="op">+</span> <span class="ident">Y</span>[<span class="ident">i</span>];
+        <span class="ident">result</span>[<span class="ident">i</span>] <span class="op">=</span> <span class="ident">tmp</span>;
+    }
+}</pre>
+    </code>
+    <p class="caption">Example <kbd>saxpy</kbd> program showing quantified
+    polymorphic types</p>
+
+
+    <p>A function may only return a polymorphic type if that type appears in the
+    parameters. Any polymorphic type found in a function body not found in the
+    parameters is cause for a typechecking error.</p>
+
+
+    <h3>Results</h3>
+    <p>At present, my compiler works as intended on all of my test cases.</p>
+
+    <h4>Maintain full compatibility with the ISPC language</h4>
+    <p>To my first goal of maintaining compatibility with ISPC, out of 1330 test
+    cases, I fail 1 due to a variable named <kbd>number</kbd> which is now the
+    name of a type, and then 3 others that involve an implicit struct
+    definition, which I'll accept as minimally disruptive.</p>
+
+    <h4>Produce C and C++ compatible object code</h4>
+    <p>Compatibility with C++ is excellent: the produced header file defines a
+    single overloaded function for each exported polymorphic function that can
+    be used from the namespace <kbd>ispc</kbd>.</p>
+    <p>Compatibility with C is worse, but functional. Each version of a
+    polymorphic function is exported, but with a mangled name. Given that C does
+    not support polymorphic functions, this is as best as we can hope to do, but
+    working in C++ should be greatly preferred.</p>
+
+    <h4>Produce performant, vectorized versions of polymorphic functions</h4>
+    <p>Given that the backend of the compiler is not modified, the resulting
+    object file should be identical to non-polymorphic code. I do not have
+    extensive benchmarks, as I assumed performance would not be an issue, but
+    from my testing performance is not a concern.</p>
+
+    <p>Within ISPC, polymorphic functions are supported natively through
+    function overloading, including with concurrency through the
+    <kbd>launch</kbd> semantic.</p>
+
+    <h3>Conclusion</h3>
+    <p>Overall, I would consider ISPC++ a success. Aside from the issues with
+    implicitly defined structs, my finished product matches my vision coming
+    into this project and from my proposal.</p>
+
+    <p>We are able to easily make some academic observations using the new
+    functionality. For example, I modified our square root function from the
+    first assignment to observe single vs. double precision performance.</p>
+    <code><pre>[sqrt float serial]:            [779.727] ms
+[sqrt double serial]:           [785.532] ms
+[sqrt float ispc]:              [117.996] ms
+[sqrt double ispc]:             [270.264] ms
+[sqrt float task ispc]:         [27.195] ms
+[sqrt double task ispc]:        [56.185] ms
+                                (6.61x speedup from ISPC float)
+                                (2.91x speedup from ISPC double)
+                                (28.67x speedup from task ISPC float)
+                                (13.98x speedup from task ISPC double)</pre>
+    </code>
+    <p class="caption">Newton's square root algorithm with single and double
+    precision values on an Intel Xeon E5-1660 v4 @ 3.20GHz</p>
+
+    <p>We can see that the speedup from vectorization is much lower with
+    doubles, while the speedup from tasks is comparable regardless of type. I
+    was able to run this test without duplicating any ISPC code. This conclusion
+    isn't surprising, given that we operate on half as many values when we
+    double the precision, but as a curious student, I can try any datatype or
+    modify the function without duplicating definitions.</p>
+
+    <p>In the same way ISPC enables a programmer to easily produce programs that
+    take advantage of modern CPU's, ISPC++ furthers that mission by reducing
+    code duplication. The easier it is for programmers to write high performance
+    code, the more programmers will write high performance code.</p>
+  </section>
+
+  <section>
+    <h2>Project Checkpoint</h2>
+
+    <h3>Work Completed</h3>
+    <p>I have a proof of concept implementation working. Using aggressive
+    textual replacement, it produces valid ISPC, with a different function for
+    each combination of polymorphic types.</p>
+
+    <code>
+      <pre><span class="keyword">export</span> <span class="type">void</span> <span class="ident">saxpy</span>(<span class="keyword">uniform</span> <span class="keyword">int</span> <span class="ident">N</span>,
+                  <span class="keyword">uniform</span> <span class="type">floating&lt;0&gt;</span> <span class="ident">scale</span>,
+                  <span class="keyword">uniform</span> <span class="type">floating&lt;1&gt;</span> <span class="ident">X</span>[],
+                  <span class="keyword">uniform</span> <span class="type">floating&lt;1&gt;</span> <span class="ident">Y</span>[],
+                  <span class="keyword">uniform</span> <span class="type">floating&lt;2&gt;</span> <span class="ident">result</span>[])
+{
+    <span class="keyword">foreach</span> (<span class="ident">i</span> <span class="op">=</span> 0 <span class="op">...</span> <span class="ident">N</span>) {
+        <span class="type">floating&lt;2&gt;</span> <span class="ident">tmp</span> <span class="op">=</span> <span class="ident">scale</span> <span class="op">*</span> <span class="ident">X</span>[<span class="ident">i</span>] <span class="op">+</span> <span class="ident">Y</span>[<span class="ident">i</span>];
+        <span class="ident">result</span>[<span class="ident">i</span>] <span class="op">=</span> <span class="ident">tmp</span>;
+    }
+}</pre>
+    </code>
+
+    <p>This simple SAXPY program produces a header file with multiple overloaded
+    definitions for the saxpy function. From the example, you can see the syntax
+    used for polymorphic types: <samp>floating&lt;0&gt;</samp> represents an
+    arbitrary floating point type, where the number is used to differentiate
+    independent polymorphic types. The only polymorphic types allowed are
+    <samp>floating</samp>, <samp>integer</samp>, and <samp>number</samp>. This
+    restriction solves one of the more complicated issues with separate
+    compilation of polymorphic code: we always generate all permutations of
+    polymorphic functions. We end up with an exponential blow up in code size,
+    but practical functions will likely only have a few polymorphic
+    parameters.</p>
+
+    <h3>Upcoming Work</h3>
+    <p>The next big step will be to modify the ISPC parser and elaboration
+    phases. My goals are largely unchanged, and I feel on track to produce a
+    complete, working solution:</p>
+
+    <ul>
+      <li>Maintain full compatibility with the ISPC language</li>
+      <li>Produce C and C++ compatible object code</li>
+      <li>Produce performant, vectorized versions of polymorphic functions</li>
+      <li>Integrate support for polymorphic functions into ISPC</li>
+    </ul>
+
+    <h3>Updated Schedule</h3>
+    <p>Due to illness and a realization that a preprocessor based implementation
+    would result in redundant work, I am no longer aiming to produce a complete
+    preprocessor based solution.</p>
+
+    <ul>
+      <li>April 15: implement a proof of concept, regex based preprocessor and
+        any needed runtime</li>
+      <li>April 19: modify the ISPC backend to generate the correct header files
+        for both C++ and C use.</li>
+      <li><del>April 25: complete a preprocessor based implementation</del></li>
+      <li>April 29: mostly-complete code generation implementation integrated
+        into ISPC</li>
+      <li>May 3: typechecking and parsing completed</li>
+      <li>May 6: final implementation completed</li>
+      <li>May 12: all documentation and analysis completed</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Proposal</h2>
+
+    <p>ISPC++ is a <a href="https://github.com/aarongut/ispc">fork</a> of the <a
+      href="https://ispc.github.io/ispc.html"> Intel SPMD Program Compiler
+      (ISPC)</a> project that includes support of polymorphic datatypes and
+    functions.</p>
+
+    <h3>Background</h3>
+    <p>ISPC aims to make writing single program multiple data (SPMD) programs
+    easy and relatively target-agnostic. The programmer does not need to write
+    vector intrinsics for each target platform, but can still closely reason
+    about a programs' mapping to hardware. The language closely resembles C, and
+    produces object files compatible with conventional C or C++ programs.</p>
+
+    <p>With roots in C, ISPC faces the same limitation to code reuse as C; in
+    particular, both languages lack polymorphism.  Given that ISPC functions are
+    primarily arithmetic in nature, adding polymorphism will enable programmers
+    to write a single procedure and use it with any vector-supported datatype. A
+    single function definition can be used with different sized datatypes or
+    even both floating point and integer versions.</p>
+
+    <p>Similarly to how ISPC frees the programmer from re-writing functions
+    using different versions of intrinsics, ISPC++ will extend the abstraction to
+    include different operands.</p>
+
+    <h3>Problem</h3>
+    <p>The root of the challenge stems from maintaining compatibility with ISPC
+    and with C or C++. ISPC is a large application with support for a wide range
+    of targets, and a successful project will not inhibit that flexibility.</p>
+
+    <h3>Resources</h3>
+    <p>This is a direct fork of the ISPC project. Hopefully, ISPC++ will share
+    the same compatibility as ISPC, able to run across platforms and with any
+    number of vector targets.</p>
+
+    <h3>Goals</h3>
+    <p>This project aims to</p>
+    <ul>
+      <li>Maintain full compatibility with the ISPC language</li>
+      <li>Produce C and C++ compatible object code</li>
+      <li>Produce performant, vectorized versions of polymorphic functions</li>
+    </ul>
+    <p>and hopefully fully supports</p>
+    <ul>
+      <li>Add support for polymorphic functions somewhat similar to C++ via a
+        preprocessor pass</li>
+      <li>Integrate support for polymorphic functions into ISPC</li>
+    </ul>
+
+    <h3>Assessment</h3>
+    <p>The first three goals are pretty hard requirements. For the last two
+    there is some ability to have partial success. This project will be
+    completely successful if a programmer can write a single ISPC++ function and
+    use that function with any appropriate datatypes via overloading in C++. Any
+    restrictions placed on expressiveness should be avoided. For example, if the
+    solution makes use of regular expressions rather than integrating with the
+    AST, I would consider the project only a partial success.</p>
+
+    <h3>Schedule</h3>
+    <ul>
+      <li>April 15: implement a proof of concept, regex based preprocessor and
+        any needed runtime</li>
+      <li>April 19: modify the ISPC backend to generate the correct header files
+        for both C++ and C use.</li>
+      <li>April 25: complete a preprocessor based implementation</li>
+      <li>April 29: incomplete implementation integrated into ISPC</li>
+      <li>May 6: final implementation completed</li>
+      <li>May 12: all documentation and analysis completed</li>
+    </ul>
+  </section>
+</body>
+</html>

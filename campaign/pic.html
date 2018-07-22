@@ -1,0 +1,50 @@
+﻿<html>
+<head>
+<title>Random imgur image</title>
+<style type="text/css">
+img { max-width: 100%; height: auto; }
+</style>
+<script language="javascript" type="text/javascript">
+function randomString(string_length)
+{
+	var chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghiklmnopqrstuvwxyz";
+	var output = "";
+	var index;
+
+	for (var i = 0; i < string_length; i++)
+	{
+		var index = Math.floor(Math.random() * chars.length);
+		output += chars.substring(index, index + 1);
+	}
+
+	return output;
+}
+
+function getImages()
+{
+	var numTries = 1;
+	var imgObject = new Image();
+	var dots = "";
+
+	imgObject.onload = function()
+	{
+		if (this.width == 161 && this.height == 81)
+		{
+			this.src = "http://i.imgur.com/" + randomString(5) + ".jpg";
+			dots += ".";
+			document.getElementById('a').innerHTML = "Please wait..." + dots;
+			numTries++;
+		}
+		else
+			document.getElementById('a').innerHTML = "It took " + numTries + (numTries == 1 ? " try" : " tries") + " to get this picture. <a href=\"javascript:getImages();\">Load new image</a><br/><br/><a href=\"" + imgObject.src + "\">" + imgObject.src + "<br/><img src=\"" + imgObject.src + "\" /></a>";
+	}
+
+	// First image attempt that sets off the onload code defined above
+	imgObject.src = "http://i.imgur.com/" + randomString(5) + ".jpg";
+}
+</script>
+<body onLoad="getImages();">
+<h1>Random Imgur image</h1>
+<div id="a">Please wait...</div>
+</body>
+</html>
