@@ -47,7 +47,7 @@ def upload_root():
     upload_file('site.css')
     upload_file('pubkey.asc')
 
-def upload_bench():
+def make_bench():
     imgs = os.listdir('img/bench')
     img_files = [f for f in filter_filenames(imgs, ['jpg', 'webp'])]
     num_imgs = int(len(img_files) / 4)
@@ -69,6 +69,9 @@ def upload_bench():
         with open('bench/{}.html'.format(i//16 + 1), 'w') as out:
             out.write(template.format(page, prev_link, next_link))
 
+def upload_bench():
+    imgs = os.listdir('img/bench')
+    img_files = [f for f in filter_filenames(imgs, ['jpg', 'webp'])]
     files = filter_filenames(os.listdir('bench'), 'html')
     for f in files:
         upload_file('bench/{}'.format(f))
@@ -95,7 +98,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Publish www.aarongutierrez.com')
 
     pub_help = 'What to publish'
-    pub_choices = ['all', 'root', 'img', 'bench', '15418', 'campaign']
+    pub_choices = ['all', 'root', 'img', 'bench-local', 'bench', '15418', 'campaign']
     parser.add_argument('pub', choices=pub_choices, help=pub_help)
 
     args = parser.parse_args()
@@ -104,6 +107,8 @@ if __name__ == '__main__':
         upload_root()
     if args.pub == 'img' or args.pub == 'all':
         upload_img()
+    if args.pub == 'bench-local' or args.pub == 'all':
+        make_bench()
     if args.pub == 'bench' or args.pub == 'all':
         upload_bench()
     if args.pub == '15418' or args.pub == 'all':
