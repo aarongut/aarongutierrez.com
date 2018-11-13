@@ -26,9 +26,17 @@ TYPE_MAP = {
     'webp': 'image/webp',
 }
 
-def upload_file(filename):
+def upload_file(filename, overwrite=True):
     print('Uploading {} to {}/{}'.format(filename, BUCKET, filename))
     ext = filename.split('.')[-1]
+
+    if not overwrite:
+        try:
+            existing = s3.get_object(Bucket=BUCKET, Key=filename)
+            print('\tSkipping existing key ', filename)
+            return
+        except:
+            pass
 
     s3.upload_file(filename, BUCKET, filename, ExtraArgs={
         'ACL': 'public-read',
@@ -77,7 +85,7 @@ def upload_bench():
         upload_file('bench/{}'.format(f))
 
     for f in img_files:
-        upload_file('img/bench/{}'.format(f))
+        upload_file('img/bench/{}'.format(f), overwrite=False)
 
 def upload_img():
     files = filter_filenames(os.listdir('img'), ['jpg', 'webp'])
