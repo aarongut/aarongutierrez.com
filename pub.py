@@ -115,7 +115,7 @@ if __name__ == '__main__':
         upload_root()
     if args.pub == 'img' or args.pub == 'all':
         upload_img()
-    if args.pub == 'bench-local' or args.pub == 'all':
+    if args.pub == 'bench-local' or args.pub == 'bench' or args.pub == 'all':
         make_bench()
     if args.pub == 'bench' or args.pub == 'all':
         upload_bench()
