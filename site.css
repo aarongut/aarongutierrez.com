@@ -43,6 +43,11 @@ footer {
 	max-height: 160px;
 }
 
+.img-view img {
+	max-height: 100vh;
+	width: 100%;
+}
+
 div.nav {
 	display: flex;
 	justify-content: space-between;

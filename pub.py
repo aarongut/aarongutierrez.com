@@ -7,14 +7,13 @@ import sys
 import boto3
 
 BUCKET='www.aarongutierrez.com'
-AWS_ACCESS_KEY='AKIAIDTVRR2EKQ5FYIEQ'
-AWS_SECRET_KEY='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'
 
-s3 = boto3.client('s3',
-                  aws_access_key_id=AWS_ACCESS_KEY,
-                  aws_secret_access_key=AWS_SECRET_KEY)
+session = boto3.Session(profile_name='push')
+s3 = session.client('s3')
 
-bench_fmt = """<a href="/img/bench/{0:03d}.jpg"><picture><source type="image/webp" srcset="/img/bench/{0:03d}.thumb.webp, /img/bench/{0:03d}.thumb@2x.webp 2x"><img src="/img/bench/{0:03d}.thumb.jpg"></picture></a>""" + "\n"
+bench_fmt = """<a href="/bench/view/{0}.html"><picture><source type="image/webp" srcset="/img/bench/{0:03d}.thumb.webp, /img/bench/{0:03d}.thumb@2x.webp 2x"><img src="/img/bench/{0:03d}.thumb.jpg"></picture></a>""" + "\n"
+
+bench_view_ftm = """<a href="/img/bench/{0:03d}.jpg"><img src="/img/bench/{0:03d}.jpg"></a>"""
 
 TYPE_MAP = {
     'asc': 'text/plain',
@@ -40,7 +39,8 @@ def upload_file(filename, overwrite=True):
 
     s3.upload_file(filename, BUCKET, filename, ExtraArgs={
         'ACL': 'public-read',
-        'ContentType': TYPE_MAP[ext]
+        'ContentType': TYPE_MAP[ext],
+        'CacheControl': 'public, max-age={}'.format('31536000' if ext in ['gif', 'jpg', 'png', 'webp'] else 86400)
     })
     print('\tDone.')
 
@@ -77,12 +77,31 @@ def make_bench():
         with open('bench/{}.html'.format(i//16 + 1), 'w') as out:
             out.write(template.format(page, prev_link, next_link))
 
+    for i in range(1, num_imgs+1):
+        make_bench_view(i,
+                        '#' if (prev_pg == 0) else str(i-1) + '.html',
+                        '#' if (i+1 > num_imgs) else str(i+1) + '.html')
+
+
+def make_bench_view(idx, prev, nxt):
+    with open('bench_view_template.html', 'r') as f:
+        template = f.read()
+
+    body = bench_view_ftm.format(idx)
+
+    with open('bench/view/{}.html'.format(idx), 'w') as out:
+        out.write(template.format(body, idx, prev, nxt))
+
 def upload_bench():
     imgs = os.listdir('img/bench')
     img_files = [f for f in filter_filenames(imgs, ['jpg', 'webp'])]
-    files = filter_filenames(os.listdir('bench'), 'html')
-    for f in files:
+    grid = filter_filenames(os.listdir('bench'), 'html')
+    view = filter_filenames(os.listdir('bench/view'), 'html')
+    for f in grid:
         upload_file('bench/{}'.format(f))
+
+    for f in view:
+        upload_file('bench/view/{}'.format(f))
 
     for f in img_files:
         upload_file('img/bench/{}'.format(f), overwrite=False)
