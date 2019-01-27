@@ -42,6 +42,15 @@ def upload_file(filename, overwrite=True):
         'ContentType': TYPE_MAP[ext],
         'CacheControl': 'public, max-age={}'.format('31536000' if ext in ['gif', 'jpg', 'png', 'webp'] else 86400)
     })
+
+    if (ext == 'html'):
+        # Also upload the file without .html
+        s3.upload_file(filename, BUCKET, filename[:-5], ExtraArgs={
+            'ACL': 'public-read',
+            'ContentType': TYPE_MAP[ext],
+            'CacheControl': 'public, max-age={}'.format('31536000' if ext in ['gif', 'jpg', 'png', 'webp'] else 86400)
+        })
+
     print('\tDone.')
 
 def filter_filenames(filenames, ext):
