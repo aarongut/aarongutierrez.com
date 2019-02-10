@@ -43,9 +43,15 @@ footer {
 	max-height: 160px;
 }
 
+.img-view {
+	align-items: center;
+	display: flex;
+	flex-direction: column;
+}
+
 .img-view img {
 	max-height: 100vh;
-	width: 100%;
+	max-width: 100%;
 }
 
 div.nav {
