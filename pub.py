@@ -88,7 +88,7 @@ def make_bench():
 
     for i in range(1, num_imgs+1):
         make_bench_view(i,
-                        '#' if (prev_pg == 0) else str(i-1) + '.html',
+                        '#' if (i-1 == 0) else str(i-1) + '.html',
                         '#' if (i+1 > num_imgs) else str(i+1) + '.html')
 
 
