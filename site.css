@@ -70,3 +70,18 @@ div.nav {
 		margin: 0 auto;
 	}
 }
+
+@media(prefers-color-scheme: dark) {
+	body {
+		background: #333;
+		color: #ccc;
+	}
+
+	a {
+		color: #8af;
+	}
+
+	a:visited {
+		color: #c8f;
+	}
+}
