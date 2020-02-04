@@ -25,6 +25,13 @@ TYPE_MAP = {
     'webp': 'image/webp',
 }
 
+def current_keys():
+    print('Fetching existing keys in {}'.format(BUCKET))
+    existing = s3.list_objects_v2(Bucket=BUCKET)
+
+    return [content['Key'] for content in existing['Contents']]
+
+
 def upload_file(filename, overwrite=True):
     print('Uploading {} to {}/{}'.format(filename, BUCKET, filename))
     ext = filename.split('.')[-1]
@@ -106,14 +113,21 @@ def upload_bench():
     img_files = [f for f in filter_filenames(imgs, ['jpg', 'webp'])]
     grid = filter_filenames(os.listdir('bench'), 'html')
     view = filter_filenames(os.listdir('bench/view'), 'html')
+
+    existing_keys = current_keys()
+
     for f in grid:
         upload_file('bench/{}'.format(f))
 
     for f in view:
-        upload_file('bench/view/{}'.format(f))
+        key = 'bench/view/{}'.format(f)
+        if key not in existing_keys:
+            upload_file('bench/view/{}'.format(f))
 
     for f in img_files:
-        upload_file('img/bench/{}'.format(f), overwrite=False)
+        key = 'img/bench/{}'.format(f)
+        if key not in existing_keys:
+            upload_file(key, overwrite=False)
 
 def upload_img():
     files = filter_filenames(os.listdir('img'), ['jpg', 'webp'])
