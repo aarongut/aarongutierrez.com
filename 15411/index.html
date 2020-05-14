@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta charset="utf-8">
+  <title>C0 to Clac: Targeting a Stack-based Virtual Machine</title>
+  <link rel="stylesheet" href="/site.css" >
+  <style>
+body {
+  font-family: sans-serif;
+  padding: 2em;
+  max-width: 60em;
+  margin: auto;
+}
+code {
+  white-space: pre-wrap;
+}
+.math {
+  font-family: serif;
+}
+dt {
+  font-family: monospace;
+  font-weight: 600;
+}
+figcaption {
+  text-align: center;
+}
+
+.pack-row {
+  align-items: flex-end;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.pack-row > figcaption {
+  text-align: center;
+  width: 100%;
+}
+.figure-code {
+  border-left: 1px solid #555;
+  padding-left: 0.5em;
+}
+.algorithm {
+  border: 1px solid #555;
+  padding: 1em;
+}
+    span.smallcaps{font-variant: small-caps;}
+    span.underline{text-decoration: underline;}
+    div.column{display: inline-block; vertical-align: top; width: 50%;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    ul.task-list{list-style: none;}
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {   }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+    code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.bn { color: #40a070; } /* BaseN */
+    code span.bu { } /* BuiltIn */
+    code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+    code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.im { } /* Import */
+    code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.pp { color: #bc7a00; } /* Preprocessor */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.ss { color: #bb6688; } /* SpecialString */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+    code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+</head>
+<body>
+  <header>
+    <h1>C0 to Clac: Targeting a Stack-based Virtual Machine</h1>
+    <p>Aaron Gutierrez &amp; Shyam Raghavan</p>
+    <p>15-411 Final Project</p>
+    <p>Fall 2015</p>
+  </header>
+  <hr>
+<h1 id="introduction">Introduction</h1>
+<p>As current 15-122 TAs, we felt as though an interesting and difficult project
+would be to retarget the L4 compiler to a minimal adaptation of Clac. Through
+the implementation of this retargeted compiler, we hoped to learn the following:
+how to retarget a register-based language to a stack-based virtual machine
+language; how to minimize the instruction set needed for a normally very large
+register-based instruction set to a very small stack-based instruction set; and
+how to develop conventions for a very small language that mimic behaviors of a
+very large language.</p>
+
+<p>In order to learn more about Clac and the process of compiling to a
+stack-based language, we researched information about Forth and the development
+philosophy behind Forth. This helped us determine what modifications were
+available to make Clac more targetable.</p>
+
+<p>We also researched methods for considering the optimizations of stack-based
+virtual machines and for register allocation on the stack. While we decided that
+we would not focus on optimizations and would instead ensure correctness, we did
+implement a simple register allocator to better utilize the operand stack.</p>
+
+<p>Retargeting the register-based x86-64 assembly language into a stack-based
+virtual machine language allowed us to delve into the specifics of the
+implementation of compilers that target stack-based virtual machines (like the
+Java Virtual Machine). One of the traditional advantages of a stack-based
+virtual machine language is that the instruction set (and therefore the number
+of bytes needed to represent each instruction) is very small - a disadvantage
+(that we clearly rediscovered) is that because the instructions are less
+specific, more instructions (and the total number of bytes needed to represent
+them) are needed to achieve the same functionality. Finally, we also needed to
+develop conventions on function calling, function flow, and memory - because we
+were retargeting from x86-64 assembly, most of the conventions we developed were
+inspired by it.</p>
+
+<p>The development of this retargeted compiler, while not immediately useful,
+helped us learn skills necessary for engineering software for a rapidly-moving,
+ever-changing target, required us to be very careful in the engineering and the
+maintenance of conventions for a language and virtual machine, and forced us to
+consider tradeoffs between performance and correctness with the short amount of
+time and resources we had to complete the compiler.</p>
+
+<h1 id="project">Project</h1>
+<p>For this project, we chose to retarget C0 code to a minimal adaptation of the
+interpreted language based off of Clac used in 15-122 Principles of Imperative
+Computation called Clac.</p>
+
+<p>In order to accomplish this, we must minimally alter the Clac runtime to
+allow for heap-like memory access and allocation. We must also alter the
+compiler to produce a stack-based internal representation and a back-end
+Clac-based representation. In sum, this means augmenting the internal
+representation and the back-end of the compiler.</p>
+
+<p>We aimed to keep the clac language as close to the original as possible. The
+majority of the work in this project is derived from the difficulty in adapting
+an internal representation designed to target x86-64 assembly to output clac.
+While we could have improved performance and optimizations, we chose to instead
+focus on correctness and developed with the explicit belief that correctness was
+paramount over performance given our time constraints and the resources
+available.</p>
+
+<h1 id="implementation">Implementation</h1>
+<h2 id="modifications-to-the-claculator">Modifications to the Claculator</h2>
+<p>The Clac language needed to be extended in order to successfully compile all
+(or at least a significant portion) of the features needed by the L4 language.
+We started with a working implementation of the Claculator from the <a
+href="https://www.cs.cmu.edu/~fp/courses/15122-f15/assignments/clac-writeup.pdf">fall
+2015 version of the 15-122 assignment</a>, which has user-defined tokens. We
+were able to implement almost all of the control flow needed using just
+user-defined tokens, with one exception, noted below.</p>
+
+<p>Our first modification adds a mutable, global array of values to complement
+the operand stack. To use the memory array, the following instructions were
+added:</p>
+
+<dl>
+<dt>get:</dt>
+<dd><span><code>n get</code></span> will take the value stored at index <span
+  class="math inline"><em>n</em></span> and place it at the top of the operand
+stack </dd>
+
+<dt>put:</dt>
+<dd><span><code>v n put</code></span> will place the value <span class="math
+  inline"><em>v</em></span> at index <span class="math inline"><em>n</em></span>
+in the memory array </dd>
+
+<dt>alloc:</dt>
+<dd><span><code>n alloc</code></span> allocates a contiguous block of memory for
+<span class="math inline"><em>n</em></span> values and places the index of the
+first location on the top of the operand stack</dd>
+</dl>
+
+<p>These instructions were designed to be in the spirit of the original Clac
+language. The <span><code>get</code></span> and <span><code>put</code></span>
+tokens are similar in behavior to the <span><code>!</code></span> and
+<span><code>@</code></span> words, respectively, in the Forth language upon
+which Clac is based. The <span><code>alloc</code></span> token serves an
+analogous purpose to the same keyword in L4.</p>
+
+<p>Additionally, the remaining comparison operators,
+<span><code>&lt;=, &gt;=, =, !=</code></span> were added. These behave as
+expected. Bitwise operators were added to support bitwise arithmetic. Bitwise
+and (<span><code>&amp;</code></span>), or (<span><code>|</code></span>), and
+exclusive or (<span><code>^</code></span>), along with arithmetic shifts
+(<span><code>&lt;&lt;</code></span> and <span><code>&gt;&gt;</code></span>),
+behave as they do in C0 and L4.</p>
+
+<p>A couple other modifications were made to support programs that do not return
+a value. The <span><code>abort</code></span> token causes the Claculator to
+raise a <span><code> SIGABRT</code></span> signal, used for assertions.
+<span><code>c0_mem_error</code></span> raises a
+<span><code>SIGUSR2</code></span> signal, used to indicate memory errors in the
+source program, rather than the Claculator.</p>
+
+<p>With the above extensions, we are able to compile almost all programs in the
+L4 language, with one large exception. Clac’s only control flow tokens are
+<span><code>if</code></span> and <span><code>skip</code></span>. In order to
+handle programs that contain loops, the loop guard and loop body become separate
+functions. As a result, without further modification, we could not compile
+programs that return inside the body of a loop.</p>
+
+<p>One of the features of the calculator that we aimed to preserve is the
+simplicity of the interpreter loop. Though the introduction of user-defined
+tokens and the call stack complicates things slightly, for the most part it
+consists of a queue where each token is considered exactly once. If we were to
+add backwards skips, the interpreter would become significantly more involved.
+So in order to support returning from the body of a loop, we made hack that aims
+to leave the interpreter loop simple.</p>
+
+<p>To overcome that shortcoming we introduced a special
+<span><code>return</code></span> token. For most functions,
+<span><code>return</code></span> causes the rest of the instruction queue to be
+skipped, and the stack is left unmodified. But for functions whose names start
+with ‘.’ <span><code>return</code></span> causes the current function
+<em>and</em> the calling function to return. If the calling function’s name also
+starts with ‘.’, it’s calling function also returns recursively. We are
+therefore allowed to use functions like basic blocks and keep the interpreter
+loop relatively simple.</p>
+
+<p>In order to better match the behavior of a C0 program, the Claculator was
+modified to not print a prompt or the operand stack when reading from a file,
+and to return the top value on the stack, if it exists, when exiting.</p>
+
+<h2 id="modifications-to-our-compiler">Modifications to Our Compiler</h2>
+<p>Because Clac programs are quite significantly different than x86-64 programs,
+we had to add a completely new back end to our compiler. We are able to use the
+same intermediate tree representation for both the x86-64 and the Clac back end.
+From that point, we add two new steps to generate Clac code.</p>
+
+<p>Our first translation targets a high-level stack-based form that contains
+variables, branches, and unconditional jumps. This serves mostly as a
+translation from infix to reverse polish form. An example program in this form
+can be seen in Figure 1.</p>
+
+<figure class="pack-row">
+<figcaption>Figure 1: Example program after different stages</figcaption>
+
+  <figure>
+<div class="sourceCode figure-code" id="cb1" data-language="C"><pre class="sourceCode objectivec"><code class="sourceCode objectivec"><span id="cb1-1"><a href="#cb1-1"></a><span class="dt">int</span> foo(<span class="dt">int</span> a) {</span>
+<span id="cb1-2"><a href="#cb1-2"></a>  <span class="dt">int</span> b = <span class="dv">2</span> * a;</span>
+<span id="cb1-3"><a href="#cb1-3"></a>  <span class="kw">if</span> (a &lt; <span class="dv">0</span>) {</span>
+<span id="cb1-4"><a href="#cb1-4"></a>    b = <span class="dv">0</span>;</span>
+<span id="cb1-5"><a href="#cb1-5"></a>  }</span>
+<span id="cb1-6"><a href="#cb1-6"></a></span>
+<span id="cb1-7"><a href="#cb1-7"></a>  <span class="kw">return</span> b;</span>
+<span id="cb1-8"><a href="#cb1-8"></a>}</span>
+<span id="cb1-9"><a href="#cb1-9"></a></span>
+<span id="cb1-10"><a href="#cb1-10"></a><span class="dt">int</span> main() {</span>
+<span id="cb1-11"><a href="#cb1-11"></a>  <span class="kw">return</span> foo(<span class="dv">5</span>);</span>
+<span id="cb1-12"><a href="#cb1-12"></a>}</span></code></pre></div>
+  <figcaption>(a) L4 Source</figcaption>
+  </figure>
+
+  <figure>
+<div class="sourceCode figure-code" id="cb2" data-language="C"><pre class="sourceCode objectivec"><code class="sourceCode objectivec"><span id="cb2-1"><a href="#cb2-1"></a>foo(a) {</span>
+<span id="cb2-2"><a href="#cb2-2"></a>  %t0Q  &lt;--  arg</span>
+<span id="cb2-3"><a href="#cb2-3"></a>  %t1Q  &lt;--  (<span class="dv">2</span> * %t0Q)</span>
+<span id="cb2-4"><a href="#cb2-4"></a>  <span class="kw">if</span> (((%t0Q &lt; <span class="dv">0</span>) == <span class="dv">1</span>))</span>
+<span id="cb2-5"><a href="#cb2-5"></a>  <span class="kw">goto</span> <span class="fl">.3</span></span>
+<span id="cb2-6"><a href="#cb2-6"></a>  <span class="kw">goto</span> <span class="fl">.4</span></span>
+<span id="cb2-7"><a href="#cb2-7"></a>  <span class="fl">.3</span></span>
+<span id="cb2-8"><a href="#cb2-8"></a>  %t1Q  &lt;--  <span class="dv">0</span></span>
+<span id="cb2-9"><a href="#cb2-9"></a>  <span class="kw">goto</span> <span class="fl">.5</span></span>
+<span id="cb2-10"><a href="#cb2-10"></a>  <span class="fl">.4</span></span>
+<span id="cb2-11"><a href="#cb2-11"></a>  <span class="fl">.5</span></span>
+<span id="cb2-12"><a href="#cb2-12"></a>  <span class="kw">return</span> %t1Q</span>
+<span id="cb2-13"><a href="#cb2-13"></a>}</span>
+<span id="cb2-14"><a href="#cb2-14"></a></span>
+<span id="cb2-15"><a href="#cb2-15"></a>main() {</span>
+<span id="cb2-16"><a href="#cb2-16"></a>  <span class="kw">return</span> foo(<span class="dv">5</span>)</span>
+<span id="cb2-17"><a href="#cb2-17"></a>}</span></code></pre></div>
+  <figcaption>(b) Intermediate Tree</figcaption>
+  </figure>
+
+  <figure>
+<pre class="figure-code"><code>foo:
+  storevar 0
+  push 2
+  loadvar 0
+  mul
+  storevar 1
+  loadvar 0
+  push 0
+  &lt;
+  push 1
+  ==
+  if {
+    push 0
+    storevar 1
+  } else {
+     
+  }
+  loadvar 1
+  return
+
+main:
+  push 5
+  foo
+  return</code></pre>
+  <figcaption>(c) High-level Stack Form</figcaption>
+  </figure>
+</figure>
+
+
+<p>From this high-level language, then translate to Clac. Because Clac doesn’t
+specify how the memory array should be used, we emulate the x86_64 stack
+discipline. All function arguments are passed on the stack, and temporary
+variables are assigned from the highest-index down. Our Clac implementation
+creates a 50,000 element memory array, so we start from index 49,999. To
+simulate stack frames, we use memory address 0 as a pseudo-stack pointer. For
+example, the <span class="math
+inline"><em>n</em><sup><em>t</em><em>h</em></sup></span> local variable for a
+function is access by:</p>
+
+<p><span><code>0 get n + get</code></span></p>
+
+<p>The value at address 0 is decremented the appropriate amount at the start of
+each function, and increment before every instance of
+<span><code>return</code></span>.</p>
+
+<p>Conditional branches like</p>
+
+<p><span><code>… exp if stms else stms …</code></span></p>
+
+<p>are expanded to</p>
+
+<p><span><code>… exp if .1 1 skip .2 …;
+: .1 stms ;
+: .2 stms ;</code></span></p>
+
+<p>Loops such as</p>
+
+<p><span><code>… .1 exp if stms goto .1 else …</code></span></p>
+
+<p>become</p>
+
+<p><span><code>… .1 …;
+: .1 exp if .2 1 skip .3 ;
+: .2 stms .1 ;
+: .3 ;</code></span></p>
+
+<p>Translation of arithmetic and stack manipulation expressions are mostly
+trivial. The final output of our sample program can be seen in Figure 2.</p>
+
+<figure>
+<pre class="figure-code"><code>: _c0_foo 0 get 3 - 0 put 0 get 0 + put 2 0 get 0 + get * 0 get 1 + put 0 get 0 + get 0 &lt; 1 = if .6 1 skip .7 0 get 1 + get 0 get 3 + 0 put return ;
+: .6 0 0 get 1 + put ;
+: .7 ;
+: _c0_main 0 get 0 - 0 put 5 _c0_foo 0 get 0 + 0 put return ;
+
+49999 0 put _c0_main</code></pre>
+<figcaption>Figure 2: Example program compiled to Clac</figcaption>
+</figure>
+
+<p>At the end of our Clac source file, we see our minimal runtime, which sets
+the stack pointer to the largest index, and calls the function
+<span><code>_c0_main</code></span>.</p>
+
+<p>Memory operations were very straight forward to implement. Unlike when
+implementing L4 for x86-64, pointers are the same size as integers, because
+pointers are just indexes into the memory array. Dereferencing a pointer <span
+class="math inline"><em>p</em></span> is simply
+<span><code>p get get</code></span>, and computing array and struct offsets are
+greatly simplified by the fact that all small types have size 1.</p>
+
+<p>In order to support array bound checking, the size of the array needs to be
+stored in memory. We employ the same strategy as before, storing the size at the
+index before the first array element. Bounds checks and null checks are
+implemented exactly as before, adding an if statement before all accesses and
+conditionally evaluating the new <span><code>c0_mem_error</code></span> token in
+Clac if the access is invalid. <span><code>NULL</code></span> is represented by
+the value 0.</p>
+
+<h2 id="register-allocation">Register Allocation</h2>
+<p>In the most straightforward translation, the operand stack is rarely
+employed. To increase utilization of the stack, we implemented Koopman’s
+algorithm for register allocation on stack machines. The algorithm as
+implemented is described below.</p>
+
+<section class="algorithm">
+<h3>Koopman’s Algorithm, as implemented</h3>
+<ol>
+<li><p>Compute the set of temps that is used at some point after each line
+  within basic blocks. This analysis is greatly simplified as the only Clac
+  instruction that uses a value is <span><code>get</code></span>.</p></li>
+
+<li><p>For each temp that is used within a block, when it is first written to,
+  additionally push a copy of the value onto the top of the operand
+  stack.</p></li>
+
+<li><p>For subsequent reads, replace the <span><code>get</code></span>
+  instruction with a <span><code>pick</code></span> instruction that moves the
+  corresponding value to the top of the stack</p></li>
+</ol>
+</section>
+
+<p>For simple programs, our register allocator works correctly. However, our
+implementation is not correct for all inputs, and time did not permit more
+effort to correct our implementation. As such, register allocation is disabled
+by default, but can be enabled with the <span><code>–clac-alloc</code></span>
+flag.</p>
+
+<p>Because of the nature of the stack, values are not always in the same
+location relative to the top. As such, care must be taken to keep track of where
+values are located.</p>
+
+<figure class="pack-row">
+  <figcaption>Figure 3: Simple program with and without register
+    allocation</figcaption>
+  <figure>
+<div class="sourceCode figure-code" id="cb5" data-language="C"><pre class="sourceCode objectivec"><code class="sourceCode objectivec"><span id="cb5-1"><a href="#cb5-1"></a><span class="dt">int</span> main() {</span>
+<span id="cb5-2"><a href="#cb5-2"></a>  <span class="dt">int</span> t0 = <span class="dv">15</span>;</span>
+<span id="cb5-3"><a href="#cb5-3"></a>  <span class="dt">int</span> t1 = <span class="dv">411</span>;</span>
+<span id="cb5-4"><a href="#cb5-4"></a></span>
+<span id="cb5-5"><a href="#cb5-5"></a>  <span class="kw">return</span> t0 * <span class="dv">1000</span> + t1;</span>
+<span id="cb5-6"><a href="#cb5-6"></a>}</span></code></pre></div>
+  <figcaption>(a) L4 Source</figcaption>
+  </figure>
+
+  <figure>
+<pre class="figure-code"><code>0 get 3 - 0 put
+15 0 get 0 + put
+411 0 get 1 + put
+0 get 0 + get
+1000
+*
+0 get 1 + get
++
+0 get 3 + 0 put
+return</code></pre>
+<figcaption>(b) Main method without register allocation</figcaption>
+</figure>
+
+<figure>
+<pre class="figure-code"><code>0 get 3 - 0 put
+15 1 pick 0 get 0 + put
+411 1 pick 0 get 1 + put
+2 pick
+1000
+*
+2 pick
++
+0 get 3 + 0 put
+return</code></pre>
+<figcaption>(c) Main method with register allocation</figcaption>
+</figure>
+</figure>
+
+<p>In Figure 3, we see a sample program with and without register allocation.
+Notice that we still place values in the memory array even though they are no
+longer used. An implementation that recognizes dead
+<span><code>put</code></span> instructions is outside the scope of our project,
+but would be interesting to study further.</p>
+
+<h1 id="testing-methodology">Testing Methodology</h1>
+<p>To test our implementation, we reused most of the tests from Lab 5. Any test
+that used library functions were deleted, as we did not port the full runtime to
+Clac, but all other features of L4 were implemented.</p>
+
+<p>To run tests against our implementation, we modified the existing testing
+framework to pass the necessary flag for our compiler to target Clac. To run the
+code and produce output, it then calls our modified Claculator with the compiled
+Clac code. The Claculator is linked with a library that raises the correct
+signals to test for memory errors, <span><code>SIGABRT</code></span> is
+generated using the C0 <span><code>assert</code></span> function, and otherwise
+the value returned from the main method is return by the main method of the
+Claculator. Thus, we should see exactly the same effects from running our Clac
+code using the Claculator and the same code compiled natively for x86-64. As
+such, the testing framework took very little modification.</p>
+
+<p>For speed, the Claculator is compiled with the unsafe C0 runtime using the
+<span><code>-O2</code></span> flag for gcc. Even so, execution time is
+significantly higher than running the native executable. For instance, the gcd
+benchmark runs around 500 times slower than our native compiler output with all
+optimizations disabled. We could have chosen to increase the timeouts for
+testing, but chose not to so that the grading time was still sane.</p>
+
+<h1 id="analysis">Analysis</h1>
+
+<h2 id="quantitative-analysis">Quantitative Analysis</h2>
+<p>We explicitly made the decision to not focus on optimizations or performance
+- this decision was made with the reasoning that (a) the virtual machine
+implementation of Clac has no way of being possibly as fast as the hardware
+instruction set given by x86-64 assembly, precisely because the virtual machine
+implementation of Clac is compiled into x86-64 assembly, (b) stack-based
+machines are empirically slower than register-based machines because of the
+larger number of instructions, and (c) with the limited amount of time and
+resources we had available, we felt as though we needed to focus on either
+correctness or performance, and chose correctness to be paramount.</p>
+
+<p>While we did make this decision, it is important to note that, as mentioned
+earlier, the <span><code>gcd</code></span> benchmark runs about 500 times slower
+on the Clac virtual machine than on the native compiler output with all
+optimizations disabled. In addition, running on a system with two quad-core
+Intel X5560 CPUs running at 2.8Ghz and the default timeouts in the autograder,
+208 tests timed out, as opposed to the regression tests, in which 72 tests timed
+out.</p>
+
+<p>Again, because this was not the focus of this project, we chose to disregard
+performance issues and focus on improving correctness throughout our time
+working on the compiler. In the future, to improve the performance of our
+Clac-targeted compiler, we could improve the stack-frame addressing system -
+rather than executing 5 instructions (<span><code>0 get i + get</code></span>)
+to get the <span class="math inline"><em>i</em></span>th stack-frame variable,
+we could either alter the instruction set to include a stack pointer or improve
+the ability of the compiler to decide what needs to be stored on the operand
+stack and/or on the stack frame. We could also reduce the amount of dead code
+created by the compiler - while function arguments are evaluated from left to
+right in C0, the way we were able to implement this was by evaluating them from
+left to right, dropping them off the operand stack, and then evaluating them
+from right to left in preparation of calling the function (because the calling
+convention developed expected the arguments in left-to-right order). In order to
+reduce this dead code, we could either alter the calling convention to expect
+the arguments in right-to-left order (and then, instead of dropping arguments
+upon left-to-right evaluation, we leave it on the operand stack) or alter the
+specification that arguments are evaluated in left-to-right order.</p>
+
+<p>Regardless of the improvements we can make to the Clac runtime or the
+compiled code, we know that we will never be able to improve the performance of
+the Clac virtual machine to be faster than that of x86-64 assembly. Because the
+only test cases we fail are those that particularly stress the compiler or the
+runtime, we feel as though the performance is robust enough for demonstration to
+curious 15-122 students that wonder why they’re asked to add function
+definitions to a language like Clac.</p>
+
+<p>On that point, with the single addition of the memory array, a large number
+of C0 programs can be successfully compiled to clac. Provided that all functions
+only return at the end, the addition of <span><code>return</code></span> to clac
+is avoided. With under 20 simple lines of additional code, a 15-122 student
+could have a way to run non-trivial programs in their own clac implementation
+for testing and exploration purposes.</p>
+
+<h2 id="qualitative-analysis">Qualitative Analysis</h2>
+<p>In terms of qualitative analysis, it appears that Clac code is in fact
+(although precedent tells us that this is not the case) more concise than x86-64
+assembly. This is probably because of the discrepancy between Clac being a
+virtual machine language and x86-64 assembly being a hardware instruction
+set.</p>
+
+<p>The hardest areas to implement involved the design and fleshing out of the
+conventions having to do with control flow and calling functions. The
+difficulties presented themselves because there were no existing conventions,
+and many possibilities either allowed for ambiguities or did not ascribe to C0
+conventions. For example, while some solutions for things like
+<span><code>if-else</code></span> control flow did ascribe to C0 semantics, they
+left room for ambiguities in the manner in which code that returned from a
+branch was supposed to execute. This particular problem was resolved with the
+introduction of a <span><code>return</code></span> token, but decisions like
+these forced us to carefully develop a set of guidelines and rules to follow
+when designing and writing the compiler. While making these convention decisions
+were not easy, the decisions that were made allowed the runtime for Clac to be
+(a) minimally altered and (b) very easy to invoke.</p>
+
+<h1 id="conclusion">Conclusion</h1>
+<p>In conclusion, while the retargeting of a C0 compiler to Clac virtual machine
+code is not the most practically useful, we’ve learned quite a few skills that
+will have very practical applications both in academia and in the software
+industry.</p>
+
+<p>By completing this compiler, we were able to develop our own calling
+convention and control flow convention. We also developed a code generation step
+from an intermediate tree representation to a stack-based intermediate
+representation. All of these tasks required us to be very deliberate about
+documentation, to consider tradeoffs between performance and correctness with a
+limited amount of resources, and develop a piece of software for a
+rapidly-changing target (like from x86-64 assembly to Clac virtual machine
+code).</p>
+
+<p>Finally, it has been an amazing experience and a really fun one building the
+largest single piece of code we’ve seen from start to finish. We’ve enjoyed the
+class immensely, and we’d like to thank Rob and the course staff for making it
+such an enjoyable experience.</p>
+</body>
+</html>
