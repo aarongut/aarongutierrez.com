@@ -3,6 +3,7 @@
 import argparse
 import os
 import sys
+import subprocess
 
 import boto3
 
@@ -11,9 +12,10 @@ BUCKET='www.aarongutierrez.com'
 session = boto3.Session(profile_name='push')
 s3 = session.client('s3')
 
-bench_fmt = """<a href="/bench/view/{0}.html"><picture><source type="image/webp" srcset="/img/bench/{0:03d}.thumb.webp, /img/bench/{0:03d}.thumb@2x.webp 2x"><img src="/img/bench/{0:03d}.thumb.jpg"></picture></a>""" + "\n"
 
-bench_view_ftm = """<a href="/img/bench/{0:03d}.jpg"><img src="/img/bench/{0:03d}.jpg"></a>"""
+bench_fmt = """<a href="/bench/view/{0}"><picture><source type="image/webp" srcset="/img/bench/{0:03d}.1560.webp 1560w, /img/bench/{0:03d}.780.webp 780w, /img/bench/{0:03d}.390.webp 390w"><source type="image/jpeg" srcset="/img/bench/{0:03d}.1560.jpg 1560w, /img/bench/{0:03d}.780.jpg 780w, /img/bench/{0:03d}.390.jpg 390w"><img src="/img/bench/{0:03d}.780.jpg"></picture></a>"""
+
+bench_view_ftm = """<a href="/img/bench/{0:03d}.1560.jpg"><picture><source type="image/webp" srcset="/img/bench/{0:03d}.1560.webp 1560w, /img/bench/{0:03d}.780.webp 780w, /img/bench/{0:03d}.390.webp 390w"><source type="image/jpeg" srcset="/img/bench/{0:03d}.1560.jpg 1560w, /img/bench/{0:03d}.780.jpg 780w, /img/bench/{0:03d}.390.jpg 390w"><img src="/img/bench/{0:03d}.780.jpg"></picture></a>"""
 
 TYPE_MAP = {
     'asc': 'text/plain',
@@ -71,10 +73,32 @@ def upload_root():
     upload_file('site.css')
     upload_file('pubkey.asc')
 
+
+def thumbnail_bench(src):
+    sizes = [1560, 780, 390]
+    formats = ["webp", "jpg"]
+
+    filename = src.split(".")[0]
+
+    for size in [1560, 780, 390]:
+        for image_type in ["webp", "jpg"]:
+            output = "img/bench/{}.{}.{}".format(filename, size, image_type)
+            if not os.path.exists(output):
+                print("Thumbnailing {}...".format(output))
+                subprocess.run(["convert", "img/bench/{}".format(src),
+                                "-resize", "{}x".format(size),
+                                "-quality", "40", output], check=True)
+            else:
+                print("Thumbnail {} exists".format(output))
+
 def make_bench():
     imgs = os.listdir('img/bench')
-    img_files = [f for f in filter_filenames(imgs, ['jpg', 'webp'])]
-    num_imgs = int(len(img_files) / 4)
+    img_files = [f for f in filter_filenames(imgs, 'png')]
+
+    for img in img_files:
+        thumbnail_bench(img)
+
+    num_imgs = int(len(img_files))
 
     with open('bench_template.html', 'r') as f:
         template = f.read()
@@ -82,21 +106,21 @@ def make_bench():
     for i in range(1, num_imgs+1, 16):
         page = ''
         for j in range(i, min(num_imgs+1, i+16)):
-            page += bench_fmt.format(j)
+            page += bench_fmt.format(num_imgs + 1 - j)
 
         prev_pg = i//16
         next_pg = i//16 + 2
 
-        prev_link = '#' if (prev_pg == 0) else '/bench/{}.html'.format(prev_pg)
-        next_link = '#' if (i+16 > num_imgs) else '/bench/{}.html'.format(next_pg)
+        prev_link = '#' if (prev_pg == 0) else '/bench/{}'.format(prev_pg)
+        next_link = '#' if (i+16 > num_imgs) else '/bench/{}'.format(next_pg)
 
         with open('bench/{}.html'.format(i//16 + 1), 'w') as out:
             out.write(template.format(page, prev_link, next_link))
 
     for i in range(1, num_imgs+1):
         make_bench_view(i,
-                        '#' if (i-1 == 0) else str(i-1) + '.html',
-                        '#' if (i+1 > num_imgs) else str(i+1) + '.html')
+                        '#' if (i-1 == 0) else str(i-1),
+                        '#' if (i+1 > num_imgs) else str(i+1))
 
 
 def make_bench_view(idx, prev, nxt):
