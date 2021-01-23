@@ -32,7 +32,7 @@ footer {
 .img-grid a {
 	align-items: flex-end;
 	display: flex;
-	margin-bottom: 10px;
+	margin-bottom: 60px;
 	max-height: calc(100vw - 40px);
 	overflow: hidden;
 }
