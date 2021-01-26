@@ -13,9 +13,9 @@ session = boto3.Session(profile_name='push')
 s3 = session.client('s3')
 
 
-bench_fmt = """<a href="/bench/view/{0}"><picture><source type="image/webp" srcset="/img/bench/{0:03d}.1560.webp 1560w, /img/bench/{0:03d}.780.webp 780w, /img/bench/{0:03d}.390.webp 390w"><source type="image/jpeg" srcset="/img/bench/{0:03d}.1560.jpg 1560w, /img/bench/{0:03d}.780.jpg 780w, /img/bench/{0:03d}.390.jpg 390w"><img src="/img/bench/{0:03d}.780.jpg"></picture></a>"""
+bench_fmt = """<a href="/bench/view/{0}"><picture><source type="image/webp" media="(min-width: 780px)" srcset="/img/bench/{0:03d}.1560.webp 2x, /img/bench/{0:03d}.780.webp"><source type="image/webp" srcset="/img/bench/{0:03d}.780.webp 2x, /img/bench/{0:03d}.390.webp"><source type="image/jpeg" media="(min-width: 780px)" srcset="/img/bench/{0:03d}.1560.jpg 2x, /img/bench/{0:03d}.780.jpg"><source type="image/jpeg" srcset="/img/bench/{0:03d}.780.jpg 2x, /img/bench/{0:03d}.390.jpg"><img src="/img/bench/{0:03d}.780.jpg"></picture></a>"""
 
-bench_view_ftm = """<a href="/img/bench/{0:03d}.1560.jpg"><picture><source type="image/webp" srcset="/img/bench/{0:03d}.1560.webp 1560w, /img/bench/{0:03d}.780.webp 780w, /img/bench/{0:03d}.390.webp 390w"><source type="image/jpeg" srcset="/img/bench/{0:03d}.1560.jpg 1560w, /img/bench/{0:03d}.780.jpg 780w, /img/bench/{0:03d}.390.jpg 390w"><img src="/img/bench/{0:03d}.780.jpg"></picture></a>"""
+bench_view_ftm = """<a href="/img/bench/{0:03d}.1560.jpg"><picture><source type="image/webp" media="(min-width: 780px)" srcset="/img/bench/{0:03d}.1560.webp 2x, /img/bench/{0:03d}.780.webp"><source type="image/webp" srcset="/img/bench/{0:03d}.780.webp 2x, /img/bench/{0:03d}.390.webp"><source type="image/jpeg" media="(min-width: 780px)" srcset="/img/bench/{0:03d}.1560.jpg 2x, /img/bench/{0:03d}.780.jpg"><source type="image/jpeg" srcset="/img/bench/{0:03d}.780.jpg 2x, /img/bench/{0:03d}.390.jpg"><img src="/img/bench/{0:03d}.780.jpg"></picture></a>"""
 
 TYPE_MAP = {
     'asc': 'text/plain',
