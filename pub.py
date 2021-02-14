@@ -129,8 +129,10 @@ def make_bench_view(idx, prev, nxt):
 
     body = bench_view_ftm.format(idx)
 
+    preview = "/img/bench/{0:03d}.780.jpg".format(idx)
+
     with open('bench/view/{}.html'.format(idx), 'w') as out:
-        out.write(template.format(body, idx, prev, nxt))
+        out.write(template.format(body, idx, preview,  prev, nxt))
 
 def upload_bench():
     imgs = os.listdir('img/bench')
