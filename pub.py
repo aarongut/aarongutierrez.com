@@ -30,21 +30,22 @@ TYPE_MAP = {
 def current_keys():
     print('Fetching existing keys in {}'.format(BUCKET))
     existing = s3.list_objects_v2(Bucket=BUCKET)
+    keys = set([content['Key'] for content in existing['Contents']])
+    while existing['IsTruncated']:
+        existing = s3.list_objects_v2(Bucket=BUCKET, ContinuationToken=existing['NextContinuationToken'])
+        keys = keys.union(set([content['Key'] for content in existing['Contents']]))
 
-    return [content['Key'] for content in existing['Contents']]
+    return keys
 
+EXISTING_KEYS = current_keys()
 
 def upload_file(filename, overwrite=True):
+    if not overwrite and filename in EXISTING_KEYS:
+        print('Skipping existing key {}'.format(filename))
+        return
+
     print('Uploading {} to {}/{}'.format(filename, BUCKET, filename))
     ext = filename.split('.')[-1]
-
-    if not overwrite:
-        try:
-            existing = s3.get_object(Bucket=BUCKET, Key=filename)
-            print('\tSkipping existing key ', filename)
-            return
-        except:
-            pass
 
     s3.upload_file(filename, BUCKET, filename, ExtraArgs={
         'ACL': 'public-read',
@@ -140,20 +141,16 @@ def upload_bench():
     grid = filter_filenames(os.listdir('bench'), 'html')
     view = filter_filenames(os.listdir('bench/view'), 'html')
 
-    existing_keys = current_keys()
-
     for f in grid:
         upload_file('bench/{}'.format(f))
 
     for f in view:
         key = 'bench/view/{}'.format(f)
-        if key not in existing_keys:
-            upload_file('bench/view/{}'.format(f))
+        upload_file('bench/view/{}'.format(f), overwrite=False)
 
     for f in img_files:
         key = 'img/bench/{}'.format(f)
-        if key not in existing_keys:
-            upload_file(key, overwrite=False)
+        upload_file(key, overwrite=False)
 
 def upload_img():
     files = filter_filenames(os.listdir('img'), ['jpg', 'webp'])
