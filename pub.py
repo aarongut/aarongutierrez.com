@@ -4,6 +4,7 @@ import argparse
 import os
 import sys
 import subprocess
+from functools import cache
 
 import boto3
 
@@ -27,6 +28,7 @@ TYPE_MAP = {
     'webp': 'image/webp',
 }
 
+@cache
 def current_keys():
     print('Fetching existing keys in {}'.format(BUCKET))
     existing = s3.list_objects_v2(Bucket=BUCKET)
@@ -37,10 +39,9 @@ def current_keys():
 
     return keys
 
-EXISTING_KEYS = current_keys()
 
 def upload_file(filename, overwrite=True):
-    if not overwrite and filename in EXISTING_KEYS:
+    if not overwrite and filename in current_keys():
         print('Skipping existing key {}'.format(filename))
         return
 
