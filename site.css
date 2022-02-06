@@ -1,12 +1,11 @@
-img#aaron {
-	width: 128px;
-	height: 128px;
-}
-
 body {
 	max-width: 780px;
 	margin: 0 auto;
 	padding: 20px;
+}
+
+:root {
+	--padding: 20px;
 }
 
 h1 {
@@ -23,6 +22,14 @@ footer {
 	text-align: center;
 }
 
+li, p {
+	line-height: 1.5;
+}
+
+li {
+	margin-bottom: 1em;
+}
+
 .img-grid {
 	display: flex;
 	flex-wrap: wrap;
@@ -33,12 +40,15 @@ footer {
 	align-items: flex-end;
 	display: flex;
 	margin-bottom: 40px;
+	margin-bottom: var(--padding);
 	max-height: min(calc(100vh - 80px), calc(100vw - 40px));
+	max-height: min(calc(100vh - 80px), calc(100vw - var(--padding)));
 	overflow: hidden;
 }
 
 .img-grid img {
 	display: block;
+	height: 100%;
 	margin-left: auto;
 	margin-right: auto;
 	max-width: 100%;
@@ -51,6 +61,7 @@ footer {
 }
 
 .img-view img {
+	height: 100%;
 	max-height: 100vh;
 	max-width: 100%;
 }
@@ -65,6 +76,12 @@ div.nav {
 @media(min-width:600px) {
 	header {
 		text-align: left;
+	}
+}
+
+@media(min-width:820px) {
+	:root {
+		--padding: min(40px, calc((100vw - 820px) / 2 + 20px));
 	}
 }
 

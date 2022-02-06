@@ -5,6 +5,7 @@ import os
 import sys
 import subprocess
 from functools import cache
+from PIL import Image
 
 import boto3
 
@@ -14,9 +15,9 @@ session = boto3.Session(profile_name='push')
 s3 = session.client('s3')
 
 
-bench_fmt = """<a href="/bench/view/{0}"><picture><source type="image/webp" media="(min-width: 780px)" srcset="/img/bench/{0:03d}.1560.webp 2x, /img/bench/{0:03d}.780.webp"><source type="image/webp" srcset="/img/bench/{0:03d}.780.webp 2x, /img/bench/{0:03d}.390.webp"><source type="image/jpeg" media="(min-width: 780px)" srcset="/img/bench/{0:03d}.1560.jpg 2x, /img/bench/{0:03d}.780.jpg"><source type="image/jpeg" srcset="/img/bench/{0:03d}.780.jpg 2x, /img/bench/{0:03d}.390.jpg"><img src="/img/bench/{0:03d}.780.jpg"></picture></a>"""
+bench_fmt = """<a href="/bench/view/{0}"><picture><source type="image/webp" media="(min-width: 780px)" srcset="/img/bench/{0:03d}.1560.webp 2x, /img/bench/{0:03d}.780.webp"><source type="image/webp" srcset="/img/bench/{0:03d}.780.webp 2x, /img/bench/{0:03d}.390.webp"><source type="image/jpeg" media="(min-width: 780px)" srcset="/img/bench/{0:03d}.1560.jpg 2x, /img/bench/{0:03d}.780.jpg"><source type="image/jpeg" srcset="/img/bench/{0:03d}.780.jpg 2x, /img/bench/{0:03d}.390.jpg"><img src="/img/bench/{0:03d}.780.jpg" width="{1}px" height="{2}px"></picture></a>"""
 
-bench_view_ftm = """<a href="/img/bench/{0:03d}.1560.jpg"><picture><source type="image/webp" media="(min-width: 780px)" srcset="/img/bench/{0:03d}.1560.webp 2x, /img/bench/{0:03d}.780.webp"><source type="image/webp" srcset="/img/bench/{0:03d}.780.webp 2x, /img/bench/{0:03d}.390.webp"><source type="image/jpeg" media="(min-width: 780px)" srcset="/img/bench/{0:03d}.1560.jpg 2x, /img/bench/{0:03d}.780.jpg"><source type="image/jpeg" srcset="/img/bench/{0:03d}.780.jpg 2x, /img/bench/{0:03d}.390.jpg"><img src="/img/bench/{0:03d}.780.jpg"></picture></a>"""
+bench_view_ftm = """<a href="/img/bench/{0:03d}.1560.jpg"><picture><source type="image/webp" media="(min-width: 780px)" srcset="/img/bench/{0:03d}.1560.webp 2x, /img/bench/{0:03d}.780.webp"><source type="image/webp" srcset="/img/bench/{0:03d}.780.webp 2x, /img/bench/{0:03d}.390.webp"><source type="image/jpeg" media="(min-width: 780px)" srcset="/img/bench/{0:03d}.1560.jpg 2x, /img/bench/{0:03d}.780.jpg"><source type="image/jpeg" srcset="/img/bench/{0:03d}.780.jpg 2x, /img/bench/{0:03d}.390.jpg"><img src="/img/bench/{0:03d}.780.jpg" width="{1}px" height="{2}px"></picture></a>"""
 
 TYPE_MAP = {
     'asc': 'text/plain',
@@ -108,7 +109,10 @@ def make_bench():
     for i in range(1, num_imgs+1, 16):
         page = ''
         for j in range(i, min(num_imgs+1, i+16)):
-            page += bench_fmt.format(num_imgs + 1 - j)
+            idx = num_imgs + 1 - j
+            with Image.open('img/bench/{0:03d}.png'.format(idx)) as img:
+                width,height = img.size
+            page += bench_fmt.format(idx, width, height)
 
         prev_pg = i//16
         next_pg = i//16 + 2
@@ -129,7 +133,10 @@ def make_bench_view(idx, prev, nxt):
     with open('bench_view_template.html', 'r') as f:
         template = f.read()
 
-    body = bench_view_ftm.format(idx)
+    with Image.open('img/bench/{0:03d}.png'.format(idx)) as img:
+        width,height = img.size
+
+    body = bench_view_ftm.format(idx, width, height)
 
     preview = "/img/bench/{0:03d}.780.jpg".format(idx)
 
